@@ -3,7 +3,7 @@
 void addMove(Piece *piece, int x, int y) {
     Position position = { x, y };
     piece -> moveset[piece -> movesetSize] = &position;
-    piece -> movesetSize++;
+    piece -> movesetSize = piece -> movesetSize + 1;
 }
 
 void updatePosition(Piece *piece, int x, int y) {
