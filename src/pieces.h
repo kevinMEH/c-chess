@@ -35,6 +35,7 @@ void addMove(Piece*, int, int);
 void updatePosition(Piece*, int, int);
 
 void generate(Piece*);
+void clearMoves(Piece*);
 void pawn(Piece*);
 void diagonals(Piece*, Diagonal*);
 void bishop(Piece*);

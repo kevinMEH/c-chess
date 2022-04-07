@@ -1,8 +1,11 @@
+#include <stdlib.h>
 #include "pieces.h"
 
 void addMove(Piece *piece, int x, int y) {
-    Position position = { x, y };
-    piece -> moveset[piece -> movesetSize] = &position;
+    Position *position = malloc(sizeof(Position));
+    position -> x = x;
+    position -> y = y;
+    piece -> moveset[piece -> movesetSize] = position;
     piece -> movesetSize = piece -> movesetSize + 1;
 }
 
@@ -13,6 +16,7 @@ void updatePosition(Piece *piece, int x, int y) {
 
 
 void generate(Piece *piece) {
+    clearMoves(piece);
     switch(piece -> role) {
         case PAWN: pawn(piece); break;
         case BISHOP: bishop(piece); break;
@@ -21,6 +25,17 @@ void generate(Piece *piece) {
         case QUEEN: queen(piece); break;
         case KING: king(piece); break;
     }
+}
+
+void clearMoves(Piece *piece) {
+    Position **moveset = piece -> moveset;
+    int movesetSize = piece -> movesetSize;
+    for(int i = 0; i < movesetSize; i++) {
+        Position *move = moveset[i];
+        moveset[i] = NULL;
+        free(move);
+    }
+    piece -> movesetSize = 0;
 }
 
 void pawn(Piece *piece) {
