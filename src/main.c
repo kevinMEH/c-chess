@@ -108,10 +108,10 @@ char* pieceChar(int x, int y) {
         static char string[13]; // 6 + 1 + 5 + 1
         char color[6];
         switch(piece -> color) {
-            case BLACK: strcpy(color, ANSI_COLOR_GRAY); break;
-            case WHITE: strcpy(color, ANSI_COLOR_CYAN); break;
+            case BLACK: strcpy(color, GRAY); break;
+            case WHITE: strcpy(color, CYAN); break;
         }
-        snprintf(string, 13, "%s%c%s", color, getChessSymbol(piece -> color, piece -> role), ANSI_COLOR_RESET);
+        snprintf(string, 13, "%s%c%s", color, getChessSymbol(piece -> color, piece -> role), RESET);
         return string;
     }
     return " ";
