@@ -111,6 +111,7 @@ void capture(int x, int y) {
         }
     }
     board.pieceCount--;
+    free(piece);
     clearSquare(x, y);
 }
 
