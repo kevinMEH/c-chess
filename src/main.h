@@ -8,6 +8,9 @@
 #define ANSI_COLOR_RESET "\x1b[0m" // 5
 
 void printBoard();
+void turn(Color);
+void generateMoves();
+Position *promptPosition();
 char *pieceChar(int, int);
 char getChessSymbol(Color, Role);
 int println(const char*, ...);
