@@ -16,6 +16,7 @@ void init();
 Piece *palloc();
 void initPiece(Piece*, Color, Role, int, int);
 void movePiece(int, int, int, int);
+Role promptPromotion();
 void clearSquare(int, int);
 void capture(int, int);
 

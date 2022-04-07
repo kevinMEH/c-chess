@@ -93,6 +93,24 @@ void movePiece(int ox, int oy, int dx, int dy) {
     board.content[dx][dy] = piece;
     updatePosition(piece, dx, dy);
     clearSquare(ox, oy);
+    
+    if(piece -> role == PAWN && piece -> position.y == 7 || piece -> position.y == 0)
+        piece -> role = promptPromotion();
+}
+
+Role promptPromotion() {
+    while(true) {
+        printf("Select which piece to promote your pawn into: N | B | R | Q\n");
+        char response[3]; // c\n\0
+        fgets(response, 3, stdin);
+        
+        switch(response[0]) {
+            case 'N': return KNIGHT;
+            case 'B': return BISHOP;
+            case 'R': return ROOK;
+            case 'Q': return QUEEN;
+        }
+    }
 }
 
 void capture(int x, int y) {
