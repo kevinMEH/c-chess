@@ -198,7 +198,7 @@ void bishop(Piece *piece) {
         else break;
     }
     // Top right
-    for(int x = rx + 1, y = ry + 1; x <= 0 && y <= 7; x++, y++) {
+    for(int x = rx + 1, y = ry + 1; x <= 7 && y <= 7; x++, y++) {
         if(valid(x, y, piece -> color))
             addMove(piece, x, y);
         else break;
