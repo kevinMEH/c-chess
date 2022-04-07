@@ -8,6 +8,7 @@ typedef struct Board {
     Piece *content[8][8];
     Piece *pieces[32];
     int pieceCount;
+    int turnNumber;
 } Board;
 
 void init();

@@ -14,12 +14,13 @@ int main() {
     init();
     
     Color whoseTurn = WHITE;
+    board.turnNumber = 1;
     while(true) {
         printBoard();
         generateMoves();
         turn(whoseTurn);
         whoseTurn = whoseTurn == WHITE ? BLACK : WHITE;
-        break;
+        board.turnNumber++;
     }
 }
 

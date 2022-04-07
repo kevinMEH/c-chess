@@ -77,6 +77,18 @@ void initPiece(Piece* piece, Color color, Role role, int x, int y) {
 
 void movePiece(int ox, int oy, int dx, int dy) {
     Piece *piece = pieceAt(ox, oy);
+    
+    if(piece -> role == PAWN) {
+        if(oy - dy == 2 || dy - oy == 2) // Double move
+            piece -> special = board.turnNumber;
+        
+        // If pawn doing en passant
+        // If no piece at target but still moving diagonally
+        if(!pieceAt(dx, dy) && (dx - ox == 1 || ox - dx == 1)) {
+            capture(dx, oy);
+        }
+    }
+
     if(pieceAt(dx, dy)) capture(dx, dy);
     board.content[dx][dy] = piece;
     updatePosition(piece, dx, dy);

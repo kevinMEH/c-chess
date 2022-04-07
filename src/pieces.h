@@ -19,9 +19,9 @@ typedef struct Piece {
     Position position;
     int movesetSize;
     Position *moveset[28];
-    bool special;
+    int special;
     // King and Rook: Moved
-    // Pawn:  
+    // Pawn: Turn moved
 } Piece;
 
 typedef struct Diagonal { // Specifically for Pawn diagonals

@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "pieces.h"
 
+extern Board board;
+
 void addMove(Piece *piece, int x, int y) {
     Position *position = malloc(sizeof(Position));
     position -> x = x;
@@ -20,7 +22,6 @@ bool inMoveset(Piece *piece, Position *position) {
     int movesetSize = piece -> movesetSize;
     for(int i = 0; i < movesetSize; i++) {
         Position *move = moveset[i];
-        printf("%d, %d\n", move -> x, move -> y);
         if(move -> x == position -> x && move -> y == position -> y)
             return true;
     }
@@ -88,7 +89,7 @@ void pawn(Piece *piece) {
             }
         } break;
     }
-
+    
     // En passant
     switch(color) {
         case BLACK: {
@@ -98,15 +99,16 @@ void pawn(Piece *piece) {
                     Piece *leftPiece = pieceAt(x - 1, y);
                     // If enemy pawn
                     if(leftPiece -> color == WHITE && leftPiece -> role == PAWN) {
-                        if(leftPiece -> special) addMove(piece, x - 1, y);
+                        if(board.turnNumber - leftPiece -> special == 1) addMove(piece, x - 1, y - 1);
                     }
                 }
                 // Right
                 if(inBounds(x + 1, y) && !isEmpty(x + 1, y)) {
-                    Piece *rightPiece = pieceAt(x - 1, y);
+                    Piece *rightPiece = pieceAt(x + 1, y);
                     // If enemy pawn
                     if(rightPiece -> color == WHITE && rightPiece -> role == PAWN) {
-                        if(rightPiece -> special) addMove(piece, x - 1, y);
+                        // If pawn double moved last turn
+                        if(board.turnNumber - rightPiece -> special == 1) addMove(piece, x + 1, y - 1);
                     }
                 }
             }
@@ -118,15 +120,15 @@ void pawn(Piece *piece) {
                     Piece *leftPiece = pieceAt(x - 1, y);
                     // If enemy pawn
                     if(leftPiece -> color == BLACK && leftPiece -> role == PAWN) {
-                        if(leftPiece -> special) addMove(piece, x - 1, y);
+                        if(board.turnNumber - leftPiece -> special == 1) addMove(piece, x - 1, y + 1);
                     }
                 }
                 // Right
                 if(inBounds(x + 1, y) && !isEmpty(x + 1, y)) {
-                    Piece *rightPiece = pieceAt(x - 1, y);
+                    Piece *rightPiece = pieceAt(x + 1, y);
                     // If enemy pawn
                     if(rightPiece -> color == BLACK && rightPiece -> role == PAWN) {
-                        if(rightPiece -> special) addMove(piece, x - 1, y);
+                        if(board.turnNumber - rightPiece -> special == 1) addMove(piece, x + 1, y + 1);
                     }
                 }
             }
