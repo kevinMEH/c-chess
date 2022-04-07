@@ -47,6 +47,11 @@ void turn(Color color) {
             free(piecePosition);
             continue;
         }
+        if(selectedPiece -> movesetSize == 0) {
+            println("Piece at %d %d has no available moves.", piecePosition -> x, piecePosition -> y);
+            free(piecePosition);
+            continue;
+        }
         while(true) {
             println("Select target:");
             targetPosition = promptPosition();
