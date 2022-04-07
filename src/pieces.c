@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include "pieces.h"
 
@@ -12,6 +13,18 @@ void addMove(Piece *piece, int x, int y) {
 void updatePosition(Piece *piece, int x, int y) {
     piece -> position.x = x;
     piece -> position.y = y;
+}
+
+bool inMoveset(Piece *piece, Position *position) {
+    Position **moveset = piece -> moveset;
+    int movesetSize = piece -> movesetSize;
+    for(int i = 0; i < movesetSize; i++) {
+        Position *move = moveset[i];
+        printf("%d, %d\n", move -> x, move -> y);
+        if(move -> x == position -> x && move -> y == position -> y)
+            return true;
+    }
+    return false;
 }
 
 

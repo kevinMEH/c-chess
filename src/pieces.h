@@ -33,6 +33,7 @@ typedef struct Diagonal { // Specifically for Pawn diagonals
 
 void addMove(Piece*, int, int);
 void updatePosition(Piece*, int, int);
+bool inMoveset(Piece*, Position*);
 
 void generate(Piece*);
 void clearMoves(Piece*);
