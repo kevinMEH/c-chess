@@ -74,9 +74,16 @@ void turn(Color color) {
 void generateMoves() {
     Piece **pieces = board.pieces;
     int pieceCount = board.pieceCount;
+
     for(int i = 0; i < pieceCount; i++) {
-        generate(pieces[i]);
+        Piece* piece = pieces[i];
+        if(piece -> role != KING) {
+            generate(piece);
+        }
     }
+    
+    generate(blackKing);
+    generate(whiteKing);
 }
 
 
