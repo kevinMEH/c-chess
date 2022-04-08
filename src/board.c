@@ -83,6 +83,10 @@ void initPiece(Piece* piece, Color color, Role role, int x, int y) {
 void movePiece(int ox, int oy, int dx, int dy) {
     Piece *piece = pieceAt(ox, oy);
     
+    // Cannot castle if King or Rook moves
+    if(piece -> role == ROOK || piece -> role == KING)
+        piece -> special = 1;
+    
     if(piece -> role == PAWN) {
         if(oy - dy == 2 || dy - oy == 2) // Double move
             piece -> special = board.turnNumber;
@@ -91,6 +95,17 @@ void movePiece(int ox, int oy, int dx, int dy) {
         // If no piece at target but still moving diagonally
         if(!pieceAt(dx, dy) && (dx - ox == 1 || ox - dx == 1)) {
             capture(dx, oy);
+        }
+    }
+    
+    if(piece -> role == KING) {
+        // Moving rooks
+        // If king is castling right
+        if(ox - dx == 2) {
+            movePiece(0, oy, 3, oy);
+        } else // if king is castling left
+        if(dx - ox == 2) {
+            movePiece(7, oy, 5, oy);
         }
     }
 

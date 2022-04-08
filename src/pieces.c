@@ -277,5 +277,35 @@ void king(Piece *piece) {
     if(valid(x + 1, y - 1, color) && !targeted(x + 1, y - 1, color))
         addMove(piece, x + 1, y - 1);
         
+        
+    // Castling
+    // King has not moved and is not in check.
+    if(piece -> special == 0 && !targeted(x, y, color)) {
+        Piece *leftRook = pieceAt(0, y);
+        Piece *rightRook = pieceAt(7, y);
+        
+        if(leftRook) {
+            // Rook has not moved
+            if(leftRook -> role == ROOK && leftRook -> special == 0) {
+                // Intermediate squares not in check.
+                if(isEmpty(1, y) && !targeted(1, y, color)
+                && isEmpty(2, y) && !targeted(2, y, color)
+                && isEmpty(3, y) && !targeted(3, y, color)) {
+                    addMove(piece, 2, y);
+                }
+            }
+        }
+        
+        if(rightRook) {
+            // Rook has not moved
+            if(rightRook -> role == ROOK && rightRook -> special == 0) {
+                // Intermediate squares not in check.
+                if(isEmpty(5, y) && !targeted(5, y, color)
+                && isEmpty(6, y) && !targeted(6, y, color)) {
+                    addMove(piece, 6, y);
+                }
+            }
+        }
+    }
 }
 
