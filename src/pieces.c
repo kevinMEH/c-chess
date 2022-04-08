@@ -255,14 +255,27 @@ void queen(Piece *piece) {
 void king(Piece *piece) {
     int x = piece -> position.x;
     int y = piece -> position.y;
+    Color color = piece -> color;
     
-    if(valid(x, y + 1, piece -> color) && !targeted(x, y + 1, piece -> color))
+    // Top
+    if(valid(x - 1, y + 1, color) && !targeted(x - 1, y + 1, color))
+        addMove(piece, x - 1, y + 1);
+    if(valid(x, y + 1, color) && !targeted(x, y + 1, color))
         addMove(piece, x, y + 1);
-    if(valid(x, y - 1, piece -> color) && !targeted(x, y - 1, piece -> color))
-        addMove(piece, x, y - 1);
-    if(valid(x + 1, y, piece -> color) && !targeted(x + 1, y, piece -> color))
-        addMove(piece, x + 1, y);
-    if(valid(x - 1, y, piece -> color) && !targeted(x - 1, y, piece -> color))
+    if(valid(x + 1, y + 1, color) && !targeted(x + 1, y + 1, color))
+        addMove(piece, x + 1, y + 1);
+    // Middle
+    if(valid(x - 1, y, color) && !targeted(x - 1, y, color))
         addMove(piece, x - 1, y);
+    if(valid(x + 1, y, color) && !targeted(x + 1, y, color))
+        addMove(piece, x + 1, y);
+    // Bottom
+    if(valid(x - 1, y - 1, color) && !targeted(x - 1, y - 1, color))
+        addMove(piece, x - 1, y - 1);
+    if(valid(x, y - 1, color) && !targeted(x, y - 1, color))
+        addMove(piece, x, y - 1);
+    if(valid(x + 1, y - 1, color) && !targeted(x + 1, y - 1, color))
+        addMove(piece, x + 1, y - 1);
+        
 }
 
