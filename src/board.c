@@ -6,6 +6,9 @@
 
 Board board = {  };
 
+Piece* blackKing = NULL;
+Piece* whiteKing = NULL;
+
 void init() {
     for(int i = 0; i < 8; i++) {
         for(int j = 0; j < 8; j++) {
@@ -21,8 +24,6 @@ void init() {
     initPiece(whiteBishopLeft, WHITE, BISHOP, 2, 0);
     Piece* whiteQueen = palloc();
     initPiece(whiteQueen, WHITE, QUEEN, 3, 0);
-    Piece* whiteKing = palloc();
-    initPiece(whiteKing, WHITE, KING, 4, 0);
     Piece* whiteBishopRight = palloc();
     initPiece(whiteBishopRight, WHITE, BISHOP, 5, 0);
     Piece* whiteKnightRight = palloc();
@@ -43,8 +44,6 @@ void init() {
     initPiece(blackBishopLeft, BLACK, BISHOP, 2, 7);
     Piece* blackQueen = palloc();
     initPiece(blackQueen, BLACK, QUEEN, 3, 7);
-    Piece* blackKing = palloc();
-    initPiece(blackKing, BLACK, KING, 4, 7);
     Piece* blackBishopRight = palloc();
     initPiece(blackBishopRight, BLACK, BISHOP, 5, 7);
     Piece* blackKnightRight = palloc();
@@ -56,6 +55,12 @@ void init() {
         Piece* pawn = palloc();
         initPiece(pawn, BLACK, PAWN, i, 6);
     }
+
+    whiteKing = palloc();
+    initPiece(whiteKing, WHITE, KING, 4, 0);
+
+    blackKing = palloc();
+    initPiece(blackKing, BLACK, KING, 4, 7);
 }
 
 Piece* palloc() {

@@ -8,6 +8,8 @@
 #include "board.h"
 
 extern Board board;
+extern Piece* blackKing;
+extern Piece* whiteKing;
 
 int main() {
     println("Welcome to c-chess!");
