@@ -94,7 +94,7 @@ void movePiece(int ox, int oy, int dx, int dy) {
     updatePosition(piece, dx, dy);
     clearSquare(ox, oy);
     
-    if(piece -> role == PAWN && piece -> position.y == 7 || piece -> position.y == 0)
+    if(piece -> role == PAWN && (piece -> position.y == 7 || piece -> position.y == 0))
         piece -> role = promptPromotion();
 }
 
