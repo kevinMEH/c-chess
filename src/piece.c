@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "pieces.h"
+#include "piece.h"
+#include "board.h"
 
 extern Board board;
 
@@ -29,7 +30,23 @@ bool inMoveset(Piece *piece, Position *position) {
 }
 
 
-void generate(Piece *piece) {
+/* 
+    Generate:
+    
+    Mode: CONSTRUCT -> Construct pins and checkmates
+            REGULAR -> Regularly generate
+            CHECK -> 
+
+    Pinned pieces -> Pieces that are targeted by a ranged enemy piece, and has the king along it's targetted file / diagonal.
+
+    Searching for pins -> Piece goes through entire file / diagonal until:
+        1. Piece encounters enemy king. It's a check, moved to activeChecks.
+        2. Piece encounters enemy piece. Keeps going through entire rank:
+            1. If it encounters a king: Pinning the piece. Move to pins.
+            2. If it encounters another piece, self or enemy: Guaranteed to not be a pin. Break out of loop.
+        3. Piece encounters self piece. Guaranteed to not be a pin. Break out of loop.
+*/
+void generate(Piece *piece, Mode mode, Rank rank) {
     clearMoves(piece);
     switch(piece -> role) {
         case PAWN: pawn(piece); break;
@@ -63,18 +80,20 @@ void pawn(Piece *piece) {
         case WHITE: targetY = y + 1; break;
     }
     
+    
     // TODO: Make sure pawn auto promotes or else
     // the move added may not be in bounds.
     if(isEmpty(x, targetY))
         addMove(piece, x, targetY);
         
     // Left
-    if(!isEmpty(x - 1, targetY) && enemy(pieceAt(x - 1, targetY) -> color, color))
+    if(inBounds(x - 1, targetY) && !isEmpty(x - 1, targetY) && enemy(pieceAt(x - 1, targetY) -> color, color))
         addMove(piece, x - 1, targetY);
         
     // Right
-    if(!isEmpty(x + 1, targetY) && enemy(pieceAt(x + 1, targetY) -> color, color))
+    if(inBounds(x + 1, targetY) && !isEmpty(x + 1, targetY) && enemy(pieceAt(x + 1, targetY) -> color, color))
         addMove(piece, x + 1, targetY);
+        
         
     // If first move
     switch(color) {
@@ -133,6 +152,21 @@ void pawn(Piece *piece) {
                 }
             }
         } break;
+    }
+}
+
+Role promptPromotion() {
+    while(true) {
+        printf("Select which piece to promote your pawn into: N | B | R | Q\n");
+        char response[3]; // c\n\0
+        fgets(response, 3, stdin);
+        
+        switch(response[0]) {
+            case 'N': return KNIGHT;
+            case 'B': return BISHOP;
+            case 'R': return ROOK;
+            case 'Q': return QUEEN;
+        }
     }
 }
 
@@ -309,3 +343,28 @@ void king(Piece *piece) {
     }
 }
 
+
+char getSymbol(Color color, Role role) {
+    switch(color) {
+        case BLACK: {
+            switch(role) {
+                case PAWN: return 'p';
+                case KNIGHT: return 'n';
+                case BISHOP: return 'b';
+                case ROOK: return 'r';
+                case QUEEN: return 'q';
+                case KING: return 'k';
+            }
+        }
+        case WHITE: {
+            switch(role) {
+                case PAWN: return 'P';
+                case KNIGHT: return 'N';
+                case BISHOP: return 'B';
+                case ROOK: return 'R';
+                case QUEEN: return 'Q';
+                case KING: return 'K';
+            }
+        }
+    }
+}

@@ -2,7 +2,10 @@
 #define PIECES_H
 
 #include <stdbool.h>
+#include "generate.h"
 
+typedef enum Mode { CONSTRUCT, REGULAR, CHECK } Mode;
+typedef enum Rank { ALL, ROW, COLUMN, TL_DIAGONAL, TR_DIAGONAL } Rank;
 
 typedef struct Position {
     int x;
@@ -29,20 +32,23 @@ typedef struct Diagonal { // Specifically for Pawn diagonals
     Position right;
 } Diagonal;
 
-#include "board.h"
+
 
 void addMove(Piece*, int, int);
 void updatePosition(Piece*, int, int);
 bool inMoveset(Piece*, Position*);
 
-void generate(Piece*);
+void generate(Piece*, Mode, Rank);
 void clearMoves(Piece*);
 void pawn(Piece*);
+Role promptPromotion();
 void diagonals(Piece*, Diagonal*);
 void bishop(Piece*);
 void knight(Piece*);
 void rook(Piece*);
 void queen(Piece*);
 void king(Piece*);
+
+char getSymbol(Color, Role);
 
 #endif
