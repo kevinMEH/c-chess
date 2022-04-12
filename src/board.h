@@ -2,7 +2,7 @@
 #define BOARD_H
 
 #include <stdbool.h>
-#include "pieces.h"
+#include "piece.h"
 
 typedef struct Board {
     Piece *content[8][8];
@@ -11,12 +11,8 @@ typedef struct Board {
     int turnNumber;
 } Board;
 
-void init();
 
-Piece *palloc();
-void initPiece(Piece*, Color, Role, int, int);
 void movePiece(int, int, int, int);
-Role promptPromotion();
 void clearSquare(int, int);
 void capture(int, int);
 
