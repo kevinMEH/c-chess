@@ -38,6 +38,11 @@ void addMove(Piece*, int, int);
 void updatePosition(Piece*, int, int);
 bool inMoveset(Piece*, Position*);
 
+bool valid(int, int, Color);
+bool targeted(int, int, Color);
+bool inBounds(int, int);
+bool isEmpty(int, int);
+bool enemy(Color, Color);
 void generate(Piece*, Mode, Rank);
 void clearMoves(Piece*);
 void pawn(Piece*);

@@ -11,17 +11,10 @@ typedef struct Board {
     int turnNumber;
 } Board;
 
-
 void movePiece(int, int, int, int);
 void clearSquare(int, int);
 void capture(int, int);
 
-bool valid(int, int, Color);
-bool targeted(int, int, Color);
-bool inBounds(int, int);
-bool isEmpty(int, int);
-bool enemy(Color, Color);
 Piece *pieceAt(int, int);
-
 
 #endif

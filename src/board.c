@@ -70,60 +70,6 @@ void clearSquare(int x, int y) {
 
 
 
-
-bool valid(int x, int y, Color color) {
-    // If in bounds, if it's empty or
-    // if piece there is the enemy.
-    if(!inBounds(x, y)) return false;
-    if(isEmpty(x, y)) return true;
-    Piece *target = pieceAt(x, y);
-    return enemy(color, target -> color);
-}
-
-// Check all enemy pieces and check if square is targeted.
-// Primarily used for castling and King movements.
-bool targeted(int x, int y, Color color) {
-    Color enemy;
-    switch(color) {
-        case BLACK: enemy = WHITE; break;
-        case WHITE: enemy = BLACK; break;
-    }
-
-    for(int i = 0; i < board.pieceCount; i++) {
-        Piece *piece = board.pieces[i];
-        if(piece -> color == enemy) {
-            if(piece -> role == PAWN) {
-                Diagonal diagonal = { { .x = 999, .y = 999 }, { .x = 999, .y = 999 } };
-                diagonals(piece, &diagonal);
-                if(diagonal.left.x == x && diagonal.left.y == y) return true;
-                if(diagonal.right.x == x && diagonal.right.y == y) return true;
-            } else {
-                for(int i = 0; i < piece -> movesetSize; i++) {
-                    if(piece -> moveset[i] -> x == x && piece -> moveset[i] -> y == y)
-                        return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
-bool inBounds(int x, int y) {
-    return x >= 0 && x <= 7 && y >= 0 && x <= 7;
-}
-
-bool isEmpty(int x, int y) {
-    return board.content[x][y] == 0;
-}
-
-bool enemy(Color color, Color target) {
-    switch(color) {
-        case BLACK: return target == WHITE;
-        case WHITE: return target == BLACK;
-    }
-}
-
 Piece *pieceAt(int x, int y) {
     return board.content[x][y];
 }
