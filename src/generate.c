@@ -78,31 +78,76 @@ void initPiece(Piece* piece, Color color, Role role, int x, int y) {
     board.pieceCount++;
 }
 
+extern Pin** pins;
+extern int numPins;
+extern Check** checks;
+extern int numChecks;
 
-
+/*
+    3 Situations: No check, single check, double check
+    
+    No Check:
+        King -> Default behavior. Free to move onto squares not targeted.
+        Pinned -> Can only move along the targeted file / diagonal.
+        Unpinned -> Default behavior.
+    
+    Single Check:
+        King -> Default behavior. Free to move onto squares not targeted.
+        Pinned -> Only moves along the file / diagonal that takes the checking piece.
+        Unpinned -> Moves that block the file / diagonal. Move that takes the checking piece.
+        
+    Double Check:
+        King -> Default behavior. Free to move ontop squares not targeted.
+        Pinned -> Cannot resolve double check by moving. No moves.
+        Unpinned -> Cannot resolve double check by moving. No moves.
+    
+    Gen cycle:
+        Generate for all enemy pieces. Construct pins and checks for enemy.
+        Generate king moves
+        If: Double check -> return. Only king can move.
+        Else: Gen pinned and unpinned pieces moves.
+*/
 void generateMoves(Color color) {
+    clearChecksAndPins();
+
     Piece **pieces = board.pieces;
     int pieceCount = board.pieceCount;
+    
+    clearAll(pieces, pieceCount);
     
     // Enemy pieces: Also construct pins
     for(int i = 0; i < pieceCount; i++) {
         Piece* piece = pieces[i];
-        if(piece -> color != color && piece -> role != KING) {
+        if(piece -> color != color) {
             generate(piece, CONSTRUCT, ALL);
         }
     }
 
-    generate(blackKing, REGULAR, ALL);
-    generate(whiteKing, REGULAR, ALL);
+    if(color == WHITE) {
+        generate(whiteKing, REGULAR, ALL);
+    } else {
+        generate(blackKing, REGULAR, ALL);
+    }
     
     Mode mode;
     
+    if(numChecks == 2) return;
+    mode = numChecks > 0 ? CHECK : REGULAR;
 
+    // TODO: Can probably optimize by not genning pinned pieces
+    // by using a 2 way binding in Piece struct to keep track of
+    // pinned or not.
     for(int i = 0; i < board.pieceCount; i++) {
         Piece* piece = board.pieces[i];
         if(piece -> color == color)
             generate(piece, mode, ALL);
     }
+    
+    for(int i = 0; i < numPins; i++) {
+        generate(pins[i] -> pinned, mode, pins[i] -> rank);
+    }
+}
+
 
 }
 

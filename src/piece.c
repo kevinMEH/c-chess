@@ -4,6 +4,10 @@
 #include "board.h"
 
 extern Board board;
+Pin* pins[8];
+int numPins;
+Check* checks[2];
+int numChecks;
 
 void addMove(Piece *piece, int x, int y) {
     Position *position = malloc(sizeof(Position));
@@ -11,6 +15,64 @@ void addMove(Piece *piece, int x, int y) {
     position -> y = y;
     piece -> moveset[piece -> movesetSize] = position;
     piece -> movesetSize = piece -> movesetSize + 1;
+}
+
+Position** guarded;
+int guardedSize;
+
+void addGuarded(int x, int y) {
+    Position* position = malloc(sizeof(Position));
+    position -> x = x;
+    position -> y = y;
+    guarded[guardedSize] = position;
+    guardedSize++;
+}
+
+void addCheck(Piece* piece, Position** interPos, int size) {
+    Check* check = malloc(sizeof(Check));
+    check -> attacker = piece;
+    check -> intermediatePositions = interPos;
+    check -> positionsSize = size;
+    checks[numChecks] = check;
+    numChecks++;
+}
+
+void addCheckNoInter(Piece* piece) {
+    Check* check = malloc(sizeof(Check));
+    check -> attacker = piece;
+    check -> intermediatePositions = NULL;
+    check -> positionsSize = 0;
+    checks[numChecks] = check;
+    numChecks++;
+}
+
+void addPin(Piece* attacker, Piece* pinned, Rank rank) {
+    Pin* pin = malloc(sizeof(Pin));
+    pin -> attacker = attacker;
+    pin -> pinned = pinned;
+    pin -> rank = rank;
+    pins[numPins] = pin;
+    numPins++;
+}
+
+void clearChecksAndPins() {
+    for(int i = 0; i < numPins; i++) {
+        Pin* pin = pins[i];
+        free(pin);
+    }
+    numPins = 0;
+    
+    for(int i = 0; i < numChecks; i++) {
+        Check* check = checks[i];
+        Position** interPos = check -> intermediatePositions;
+        int posSize = check -> positionsSize;
+        for(int i = 0; i < posSize; i++) {
+            free(interPos[i]);
+        }
+        free(interPos);
+        free(check);
+    }
+    numChecks = 0;
 }
 
 void updatePosition(Piece *piece, int x, int y) {
@@ -35,8 +97,18 @@ bool valid(int x, int y, Color color) {
     if(!inBounds(x, y)) return false;
     if(isEmpty(x, y)) return true;
     Piece *target = pieceAt(x, y);
-    return enemy(color, target -> color);
+    return enemy(target, color);
 }
+
+Validity conValid(int x, int y, Color color) {
+    if(!inBounds(x, y)) return INVALID;
+    if(isEmpty(x, y)) return VALID;
+    Piece* target = pieceAt(x, y);
+    if(!enemy(target, color)) return INVALID;
+    if(target -> role == KING) return VCHECK;
+    return VALID;
+}
+
 // Check all enemy pieces and check if square is targeted.
 // Primarily used for castling and King movements.
 bool targeted(int x, int y, Color color) {
@@ -44,6 +116,11 @@ bool targeted(int x, int y, Color color) {
     switch(color) {
         case BLACK: enemy = WHITE; break;
         case WHITE: enemy = BLACK; break;
+    }
+    
+    for(int i = 0; i < guardedSize; i++) {
+        Position* position = guarded[i];
+        if(position -> x == x && position -> y == y) return true;
     }
 
     for(int i = 0; i < board.pieceCount; i++) {
@@ -67,18 +144,35 @@ bool targeted(int x, int y, Color color) {
 }
 
 bool inBounds(int x, int y) {
-    return x >= 0 && x <= 7 && y >= 0 && x <= 7;
+    return x >= 0 && x <= 7 && y >= 0 && y <= 7;
 }
 
 bool isEmpty(int x, int y) {
     return board.content[x][y] == 0;
 }
 
-bool enemy(Color color, Color target) {
-    switch(color) {
-        case BLACK: return target == WHITE;
-        case WHITE: return target == BLACK;
+bool enemy(Piece* enemy, Color friendly) {
+    return enemy -> color != friendly;
+}
+
+bool isKing(Piece* piece) {
+    return piece -> role == KING;
+}
+
+bool enemyKing(Piece* piece, Color friendly) {
+    return enemy(piece, friendly) && isKing(piece);
+}
+
+bool posBlocksCheck(int x, int y) {
+    Check* check = checks[0];
+    Position** interPos = check -> intermediatePositions;
+    int posSize = check -> positionsSize;
+    for(int i = 0; i < posSize; i++) {
+        Position* position = interPos[i];
+        if(x == position -> x && y == position -> y)
+            return true;
     }
+    return false;
 }
 
 /* 
@@ -98,14 +192,13 @@ bool enemy(Color color, Color target) {
         3. Piece encounters self piece. Guaranteed to not be a pin. Break out of loop.
 */
 void generate(Piece *piece, Mode mode, Rank rank) {
-    clearMoves(piece);
     switch(piece -> role) {
-        case PAWN: pawn(piece); break;
-        case BISHOP: bishop(piece); break;
-        case KNIGHT: knight(piece); break;
-        case ROOK: rook(piece); break;
-        case QUEEN: queen(piece); break;
-        case KING: king(piece); break;
+        case PAWN: pawn(piece, mode, rank); break;
+        case BISHOP: bishop(piece, mode, rank); break;
+        case KNIGHT: knight(piece, mode, rank); break;
+        case ROOK: rook(piece, mode, rank); break;
+        case QUEEN: queen(piece, mode, rank); break;
+        case KING: king(piece, mode); break;
     }
 }
 
@@ -120,7 +213,35 @@ void clearMoves(Piece *piece) {
     piece -> movesetSize = 0;
 }
 
-void pawn(Piece *piece) {
+void clearAll(Piece** pieces, int piecesSize) {
+    for(int i = 0; i < piecesSize; i++) {
+        Piece* piece = pieces[i];
+        clearMoves(piece);
+    }
+}
+
+void clearGuarded() {
+    for(int i = 0; i < guardedSize; i++) {
+        Position* position = guarded[i];
+        free(position);
+    }
+    guardedSize = 0;
+}
+
+void checkModeAdd(Piece* piece, int x, int y, Mode mode) {
+    // If king not in check, add
+    // If king is in check, but piece killing attacker: Add
+    // If king is in check, but piece blocks check: Add
+    if(mode != CHECK) {
+        addMove(piece, x, y);
+    } else if(posBlocksCheck(x, y)) {
+        addMove(piece, x, y);
+    } else if(!isEmpty(x, y) && pieceAt(x, y) == checks[0] -> attacker) {
+        addMove(piece, x, y);
+    }
+}
+
+void pawn(Piece *piece, Mode mode, Rank rank) {
     int x = piece -> position.x;
     int y = piece -> position.y;
     Color color = piece -> color;
@@ -131,34 +252,87 @@ void pawn(Piece *piece) {
         case WHITE: targetY = y + 1; break;
     }
     
+    // Can possibly move forward if pinned to column or all moves avail
+    bool allOrCol = rank == ALL || rank == COLUMN;
     
-    // TODO: Make sure pawn auto promotes or else
-    // the move added may not be in bounds.
-    if(isEmpty(x, targetY))
-        addMove(piece, x, targetY);
-        
-    // Left
-    if(inBounds(x - 1, targetY) && !isEmpty(x - 1, targetY) && enemy(pieceAt(x - 1, targetY) -> color, color))
-        addMove(piece, x - 1, targetY);
-        
-    // Right
-    if(inBounds(x + 1, targetY) && !isEmpty(x + 1, targetY) && enemy(pieceAt(x + 1, targetY) -> color, color))
-        addMove(piece, x + 1, targetY);
-        
+    // Move forward
+    // If is empty and ALL or pinned to COLUMN
+    if(isEmpty(x, targetY) && allOrCol) {
+        // If king not in check, add
+        // If in check: Does piece block the check? If yes, add
+        if(mode != CHECK) {
+            addMove(piece, x, targetY);
+        } else if(posBlocksCheck(x, targetY)) {
+            addMove(piece, x, targetY);
+        }
+    }
         
     // If first move
     switch(color) {
         case BLACK: {
-            if(y == 6 && isEmpty(x, y - 2)) {
-                addMove(piece, x, y - 2);
+            // If on home row, target is empty and ALL or pinned to COLUMN
+            if(y == 6 && isEmpty(x, y - 2) && allOrCol) {
+                // If king not in check, add
+                // If king is in check, but move blocks check: Add
+                if(mode != CHECK) {
+                    addMove(piece, x, y - 2);
+                } else if(posBlocksCheck(x, y - 2)) {
+                    addMove(piece, x, y - 2);
+                }
             }
         } break;
         case WHITE: {
-            if(y == 1 && isEmpty(x, y + 2)) {
-                addMove(piece, x, y + 2);
+            // If on home row, target is empty and ALL or pinned to COLUMN
+            if(y == 1 && isEmpty(x, y + 2) && allOrCol) {
+                // If king not in check, add
+                // If king is in check, but move blocks check: Add
+                if(mode != CHECK) {
+                    addMove(piece, x, y + 2);
+                } else if(posBlocksCheck(x, y + 2)) {
+                    addMove(piece, x, y + 2);
+                }
             }
         } break;
     }
+        
+    // Left
+    // If in bounds, isn't empty, and is enemy
+    if(inBounds(x - 1, targetY) && !isEmpty(x - 1, targetY)
+    && enemy(pieceAt(x - 1, targetY), color)) {
+
+        // If not pinned or is pinned and along diagonal
+        if(rank == ALL || ( color == WHITE && rank == TL_DIAGONAL )
+        || ( color == BLACK && rank == TR_DIAGONAL )) {
+            
+            // If king not in check
+            // If king is in check, but pawn is killing attacker
+
+            // If king is in check, pawn cannot take AND block check
+            // (Because the enemy piece prev there is already blocking it,
+            // but our king is still in check) so no need to check for blocks
+            if(mode != CHECK) {
+                addMove(piece, x - 1, targetY);
+            } else if(pieceAt(x - 1, targetY) == checks[0] -> attacker) {
+                addMove(piece, x - 1, targetY);
+            }
+        }
+    }
+        
+    // Right
+    if(inBounds(x + 1, targetY) && !isEmpty(x + 1, targetY)
+    && enemy(pieceAt(x + 1, targetY), color)) {
+
+        if(rank == ALL || ( color == WHITE && rank == TR_DIAGONAL )
+        || ( color == BLACK && rank == TL_DIAGONAL )) {
+            
+            if(mode != CHECK) {
+                addMove(piece, x + 1, targetY);
+            } else if(pieceAt(x + 1, targetY) == checks[0] -> attacker) {
+                addMove(piece, x + 1, targetY);
+            }
+        }
+    }
+        
     
     // En passant
     switch(color) {
@@ -169,7 +343,14 @@ void pawn(Piece *piece) {
                     Piece *leftPiece = pieceAt(x - 1, y);
                     // If enemy pawn
                     if(leftPiece -> color == WHITE && leftPiece -> role == PAWN) {
-                        if(board.turnNumber - leftPiece -> special == 1) addMove(piece, x - 1, y - 1);
+                        // If pawn double moved last turn
+                        if(board.turnNumber - leftPiece -> special == 1) {
+                            // Valid En Passant!
+                            // If free to move or pinned along TR_DIAGONAL
+                            if( rank == ALL || rank == TR_DIAGONAL ) {
+                                checkModeAdd(piece, x - 1, y - 1, mode);
+                            }
+                        }
                     }
                 }
                 // Right
@@ -178,7 +359,13 @@ void pawn(Piece *piece) {
                     // If enemy pawn
                     if(rightPiece -> color == WHITE && rightPiece -> role == PAWN) {
                         // If pawn double moved last turn
-                        if(board.turnNumber - rightPiece -> special == 1) addMove(piece, x + 1, y - 1);
+                        if(board.turnNumber - rightPiece -> special == 1) {
+                            // Valid En Passsant!
+                            // If free to move or pinned along TL_DIAGONAL
+                            if( rank == ALL || rank == TL_DIAGONAL ) {
+                                checkModeAdd(piece, x + 1, y - 1, mode);
+                            }
+                        }
                     }
                 }
             }
@@ -190,7 +377,14 @@ void pawn(Piece *piece) {
                     Piece *leftPiece = pieceAt(x - 1, y);
                     // If enemy pawn
                     if(leftPiece -> color == BLACK && leftPiece -> role == PAWN) {
-                        if(board.turnNumber - leftPiece -> special == 1) addMove(piece, x - 1, y + 1);
+                        // If pawn double moved last turn
+                        if(board.turnNumber - leftPiece -> special == 1) {
+                            // Valid En passant!
+                            // If free to move or pinned along TL_DIAGONAL
+                            if( rank == ALL || rank == TL_DIAGONAL ) {
+                                checkModeAdd(piece, x - 1, y + 1, mode);
+                            }
+                        }
                     }
                 }
                 // Right
@@ -198,12 +392,20 @@ void pawn(Piece *piece) {
                     Piece *rightPiece = pieceAt(x + 1, y);
                     // If enemy pawn
                     if(rightPiece -> color == BLACK && rightPiece -> role == PAWN) {
-                        if(board.turnNumber - rightPiece -> special == 1) addMove(piece, x + 1, y + 1);
+                        // If pawn double moved last turn
+                        if(board.turnNumber - rightPiece -> special == 1) {
+                            // Valid En passant!
+                            // If free to move or pinned along TR_DIAGONAL
+                            if( rank == ALL || rank == TR_DIAGONAL ) {
+                                checkModeAdd(piece, x + 1, y + 1, mode);
+                            }
+                        }
                     }
                 }
             }
         } break;
     }
+
 }
 
 Role promptPromotion() {
@@ -239,128 +441,367 @@ void diagonals(Piece *piece, Diagonal *diagonal) {
     // information should be checking it themselves anyways
 }
 
-void knight(Piece *piece) {
+void validCheckModeAdd(Piece* piece, int x, int y, Mode mode) {
+    if(valid(x, y, piece -> color))
+        checkModeAdd(piece, x, y, mode);
+}
+
+void conAddValidityNoInter(Piece* piece, int x, int y, Color color) {
+    Validity validity = conValid(x, y, color);
+    if(validity == GUARD) addGuarded(x, y);
+    if(validity == INVALID || validity == GUARD) return;
+    addMove(piece, x, y);
+    if(validity == VCHECK) addCheckNoInter(piece);
+}
+
+void knight(Piece *piece, Mode mode, Rank rank) {
     int x = piece -> position.x;
     int y = piece -> position.y;
     Color color = piece -> color;
     
-    // LTT
-    if(valid(x - 1, y + 2, color))
-        addMove(piece, x - 1, y + 2);
-    // LLT
-    if(valid(x - 2, y + 1, color))
-        addMove(piece, x - 2, y + 1);
-    // LLB
-    if(valid(x - 2, y - 1, color))
-        addMove(piece, x - 2, y - 1);
-    // LBB
-    if(valid(x - 1, y - 2, color))
-        addMove(piece, x - 1, y - 2);
-
-    // RBB
-    if(valid(x + 1, y - 2, color))
-        addMove(piece, x + 1, y - 2);
-    // RRB
-    if(valid(x + 2, y - 1, color))
-        addMove(piece, x + 2, y - 1);
-    // RRT
-    if(valid(x + 2, y + 1, color))
-        addMove(piece, x + 2, y + 1);
-    // RTT
-    if(valid(x + 1, y + 2, color))
-        addMove(piece, x + 1, y + 2);
+    if(mode == CONSTRUCT) {
+        conAddValidityNoInter(piece, x - 1, y + 2, color);
+        conAddValidityNoInter(piece, x - 2, y + 1, color);
+        conAddValidityNoInter(piece, x - 2, y - 1, color);
+        conAddValidityNoInter(piece, x - 1, y - 2, color);
+        conAddValidityNoInter(piece, x + 1, y - 2, color);
+        conAddValidityNoInter(piece, x + 2, y - 1, color);
+        conAddValidityNoInter(piece, x + 2, y + 1, color);
+        conAddValidityNoInter(piece, x + 1, y + 2, color);
+    } else {
+        // If pinned, can't move
+        if(rank != ALL) return;
+        validCheckModeAdd(piece, x - 1, y + 2, mode);
+        validCheckModeAdd(piece, x - 2, y + 1, mode);
+        validCheckModeAdd(piece, x - 2, y - 1, mode);
+        validCheckModeAdd(piece, x - 1, y - 2, mode);
+        validCheckModeAdd(piece, x + 1, y - 2, mode);
+        validCheckModeAdd(piece, x + 2, y - 1, mode);
+        validCheckModeAdd(piece, x + 2, y + 1, mode);
+        validCheckModeAdd(piece, x + 1, y + 2, mode);
+    }
+    
 }
 
-void bishop(Piece *piece) {
-    // No variable shadowing in C...
+void freeInterPos(Position** interPos, int posSize) {
+    for(int i = 0; i < posSize; i++) {
+        Position* position = interPos[i];
+        free(position);
+    }
+    free(interPos);
+}
+
+// Returns whether to break or not
+ConResult slidingValidateConstructBody(Piece* piece, int x, int y, bool* firstPassP, Piece** passedPieceP, Position** interPos, int* index, Rank rank) {
+    Color color = piece -> color;
+    if(isEmpty(x, y) && *firstPassP) {
+        addMove(piece, x, y);
+        Position* position = malloc(sizeof(Position));
+        position -> x = x;
+        position -> y = y;
+        interPos[*index] = position;
+        *index = *index + 1;
+    } else if(*firstPassP) {
+        // Not empty, but first pass: Blocked by something
+        *firstPassP = false;
+        Piece* targetPiece = pieceAt(x, y);
+        // Blocked by friendly: Break, can't pin anything
+        if(enemy(targetPiece, color)) {
+            addMove(piece, x, y);
+            // Blocked by king: Checking king
+            // Else other enemy piece, move on
+            if(isKing(targetPiece)) {
+                addCheck(piece, interPos, *index);
+                return CHECKED;
+            } else {
+                *passedPieceP = targetPiece;
+            }
+        } else return BREAK;
+    } else if(isEmpty(x, y)) {
+        return OTHER;
+    } else {
+        // Not empty, but passed an enemy piece before:
+        // Is targeted piece enemy king? If yes, pinned!
+        if(enemyKing(pieceAt(x, y), color)) {
+            addPin(piece, *passedPieceP, rank);
+        }
+        return BREAK;
+    }
+    return OTHER;
+}
+
+void bishop(Piece *piece, Mode mode, Rank rank) {
     int rx = piece -> position.x;
     int ry = piece -> position.y;
+    Color color = piece -> color;
+    
+    bool construct = mode == CONSTRUCT;
     
     // Top left
-    for(int x = rx - 1, y = ry + 1; x >= 0 && y <= 7; x--, y++) {
-        if(valid(x, y, piece -> color))
-            addMove(piece, x, y);
-        else break;
+    if(construct) {
+        bool firstPass = true;
+        bool checked = false;
+        Piece* passedPiece;
+        Position** interPos = malloc(7 * sizeof(Position*));
+        int index = 0;
+
+        for(int x = rx - 1, y = ry + 1; x >= 0 && y <= 7; x--, y++) {
+            ConResult result = slidingValidateConstructBody
+                (piece, x, y, &firstPass, &passedPiece, 
+                interPos, &index, TL_DIAGONAL);
+            if(result == CHECKED) checked = true;
+            if(result == BREAK || result == CHECKED) break;
+        }
+        
+        if(!checked) freeInterPos(interPos, index);
+    } else {
+        if(rank == ALL || rank == TL_DIAGONAL) {
+            for(int x = rx - 1, y = ry + 1; x >= 0 && y <= 7; x--, y++) {
+                if(valid(x, y, color)) {
+                    checkModeAdd(piece, x, y, mode);
+                } else break;
+            }
+        }
     }
     // Top right
-    for(int x = rx + 1, y = ry + 1; x <= 7 && y <= 7; x++, y++) {
-        if(valid(x, y, piece -> color))
-            addMove(piece, x, y);
-        else break;
+    if(construct) {
+        bool firstPass = true;
+        bool checked = false;
+        Piece* passedPiece;
+        Position** interPos = malloc(7 * sizeof(Position*));
+        int index = 0;
+        
+        for(int x = rx + 1, y = ry + 1; x <= 7 && y <= 7; x++, y++) {
+            ConResult result = slidingValidateConstructBody
+                (piece, x, y, &firstPass, &passedPiece, 
+                interPos, &index, TR_DIAGONAL);
+            if(result == CHECKED) checked = true;
+            if(result == BREAK || result == CHECKED) break;
+        }
+        
+        if(!checked) freeInterPos(interPos, index);
+    } else {
+        if(rank == ALL || rank == TR_DIAGONAL) {
+            for(int x = rx + 1, y = ry + 1; x <= 7 && y <= 7; x++, y++) {
+                if(valid(x, y, color))
+                    checkModeAdd(piece, x, y, mode);
+                else break;
+            }
+        }
     }
     // Bottom left
-    for(int x = rx - 1, y = ry - 1; x >= 0 && y >= 0; x--, y--) {
-        if(valid(x, y, piece -> color))
-            addMove(piece, x, y);
-        else break;
+    if(construct) {
+        bool firstPass = true;
+        bool checked = false;
+        Piece* passedPiece;
+        Position** interPos = malloc(7 * sizeof(Position*));
+        int index = 0;
+
+        for(int x = rx - 1, y = ry - 1; x >= 0 && y >= 0; x--, y--) {
+            ConResult result = slidingValidateConstructBody
+                (piece, x, y, &firstPass, &passedPiece, 
+                interPos, &index, TR_DIAGONAL);
+            if(result == CHECKED) checked = true;
+            if(result == BREAK || result == CHECKED) break;
+        }
+        
+        if(!checked) freeInterPos(interPos, index);
+    } else {
+        if(rank == ALL || rank == TR_DIAGONAL) {
+            for(int x = rx - 1, y = ry - 1; x >= 0 && y >= 0; x--, y--) {
+                if(valid(x, y, color))
+                    checkModeAdd(piece, x, y, mode);
+                else break;
+            }
+        }
     }
     // Bottom right
-    for(int x = rx + 1, y = ry - 1; x <= 7 && y >= 0; x++, y--) {
-        if(valid(x, y, piece -> color))
-            addMove(piece, x, y);
-        else break;
+    if(construct) {
+        bool firstPass = true;
+        bool checked = false;
+        Piece* passedPiece;
+        Position** interPos = malloc(7 * sizeof(Position*));
+        int index = 0;
+        
+        for(int x = rx + 1, y = ry - 1; x <= 7 && y >= 0; x++, y--) {
+            ConResult result = slidingValidateConstructBody
+                (piece, x, y, &firstPass, &passedPiece, 
+                interPos, &index, TL_DIAGONAL);
+            if(result == CHECKED) checked = true;
+            if(result == BREAK || result == CHECKED) break;
+        }
+        
+        if(!checked) freeInterPos(interPos, index);
+    } else {
+        if(rank == ALL || rank == TL_DIAGONAL) {
+            for(int x = rx + 1, y = ry - 1; x <= 7 && y >= 0; x++, y--) {
+                if(valid(x, y, color))
+                    checkModeAdd(piece, x, y, mode);
+                else break;
+            }
+        }
     }
 }
 
-void rook(Piece *piece) {
+void rook(Piece *piece, Mode mode, Rank rank) {
     int rx = piece -> position.x;
     int ry = piece -> position.y;
+    Color color = piece -> color;
     
-    // Up
-    for(int y = ry + 1; y <= 7; y++) {
-        if(valid(rx, y, piece -> color))
-            addMove(piece, rx, y);
-        else break;
+    bool construct = mode == CONSTRUCT;
+    
+    if(construct) {
+        // If true to seperate out scopes
+        // Up
+        if(true) {
+            bool firstPass = true;
+            bool checked = false;
+            Piece* passedPiece;
+            Position** interPos = malloc(7 * sizeof(Position*));
+            int index = 0;
+
+            for(int y = ry + 1; y <= 7; y++) {
+                ConResult result = slidingValidateConstructBody
+                    (piece, rx, y, &firstPass, &passedPiece,
+                    interPos, &index, COLUMN);
+                if(result == CHECKED) checked = true;
+                if(result == BREAK || result == CHECKED) break;
+            }
+            
+            if(!checked) freeInterPos(interPos, index);
+        }
+        
+        // Down
+        if(true) {
+            bool firstPass = true;
+            bool checked = false;
+            Piece* passedPiece;
+            Position** interPos = malloc(7 * sizeof(Position*));
+            int index = 0;
+
+            for(int y = ry - 1; y >= 0; y--) {
+                ConResult result = slidingValidateConstructBody
+                    (piece, rx, y, &firstPass, &passedPiece,
+                    interPos, &index, COLUMN);
+                if(result == CHECKED) checked = true;
+                if(result == BREAK || result == CHECKED) break;
+            }
+            
+            if(!checked) freeInterPos(interPos, index);
+        }
+    } else {
+        if(rank == ALL || rank == COLUMN) {
+            for(int y = ry + 1; y <= 7; y++) {
+                if(valid(rx, y, color))
+                    checkModeAdd(piece, rx, y, mode);
+                else break;
+            }
+
+            for(int y = ry - 1; y >= 0; y--) {
+                if(valid(rx, y, color))
+                    checkModeAdd(piece, rx, y, mode);
+                else break;
+            }
+        }
     }
-    // Down
-    for(int y = ry - 1; y >= 0; y--) {
-        if(valid(rx, y, piece -> color))
-            addMove(piece, rx, y);
-        else break;
-    }
-    // Left
-    for(int x = rx - 1; x >= 0; x--) {
-        if(valid(x, ry, piece -> color))
-            addMove(piece, x, ry);
-        else break;
-    }
-    // Right
-    for(int x = rx + 1; x <= 7; x++) {
-        if(valid(x, ry, piece -> color))
-            addMove(piece, x, ry);
-        else break;
+
+    if(construct) {
+        // Left
+        if(true) {
+            bool firstPass = true;
+            bool checked = false;
+            Piece* passedPiece;
+            Position** interPos = malloc(7 * sizeof(Position*));
+            int index = 0;
+
+            for(int x = rx - 1; x >= 0; x--) {
+                ConResult result = slidingValidateConstructBody
+                    (piece, x, ry, &firstPass, &passedPiece,
+                    interPos, &index, ROW);
+                if(result == CHECKED) checked = true;
+                if(result == BREAK || result == CHECKED) break;
+            }
+            
+            if(!checked) freeInterPos(interPos, index);
+        }
+
+        // Right
+        if(true) {
+            bool firstPass = true;
+            bool checked = false;
+            Piece* passedPiece;
+            Position** interPos = malloc(7 * sizeof(Position*));
+            int index = 0;
+
+            for(int x = rx + 1; x <= 7; x++) {
+                ConResult result = slidingValidateConstructBody
+                    (piece, x, ry, &firstPass, &passedPiece,
+                    interPos, &index, ROW);
+                if(result == CHECKED)  checked = true;
+                if(result == BREAK || result == CHECKED) break;
+            }
+            
+            if(!checked) freeInterPos(interPos, index);
+        }
+
+    } else {
+        if(rank == ALL || rank == ROW) {
+            for(int x = rx - 1; x >= 0; x--) {
+                if(valid(x, ry, color))
+                    checkModeAdd(piece, x, ry, mode);
+                else break;
+            }
+
+            for(int x = rx + 1; x <= 7; x++) {
+                if(valid(x, ry, color))
+                    checkModeAdd(piece, x, ry, mode);
+                else break;
+            }
+        }
     }
 }
 
-void queen(Piece *piece) {
-    rook(piece);
-    bishop(piece);
+void queen(Piece *piece, Mode mode, Rank rank) {
+    rook(piece, mode, rank);
+    bishop(piece, mode, rank);
 }
 
-void king(Piece *piece) {
+void king(Piece *piece, Mode mode) {
     int x = piece -> position.x;
     int y = piece -> position.y;
     Color color = piece -> color;
+    bool construct = mode == CONSTRUCT;
     
-    // Top
-    if(valid(x - 1, y + 1, color) && !targeted(x - 1, y + 1, color))
-        addMove(piece, x - 1, y + 1);
-    if(valid(x, y + 1, color) && !targeted(x, y + 1, color))
-        addMove(piece, x, y + 1);
-    if(valid(x + 1, y + 1, color) && !targeted(x + 1, y + 1, color))
-        addMove(piece, x + 1, y + 1);
-    // Middle
-    if(valid(x - 1, y, color) && !targeted(x - 1, y, color))
-        addMove(piece, x - 1, y);
-    if(valid(x + 1, y, color) && !targeted(x + 1, y, color))
-        addMove(piece, x + 1, y);
-    // Bottom
-    if(valid(x - 1, y - 1, color) && !targeted(x - 1, y - 1, color))
-        addMove(piece, x - 1, y - 1);
-    if(valid(x, y - 1, color) && !targeted(x, y - 1, color))
-        addMove(piece, x, y - 1);
-    if(valid(x + 1, y - 1, color) && !targeted(x + 1, y - 1, color))
-        addMove(piece, x + 1, y - 1);
+    if(construct) {
+        conAddValidityNoInter(piece, x - 1, y + 1, color);
+        conAddValidityNoInter(piece, x, y + 1, color);
+        conAddValidityNoInter(piece, x + 1, y + 1, color);
+        conAddValidityNoInter(piece, x - 1, y, color);
+        conAddValidityNoInter(piece, x + 1, y, color);
+        conAddValidityNoInter(piece, x - 1, y - 1, color);
+        conAddValidityNoInter(piece, x, y - 1, color);
+        conAddValidityNoInter(piece, x + 1, y - 1, color);
+    } else {
+        // Top
+        if(valid(x - 1, y + 1, color) && !targeted(x - 1, y + 1, color))
+            addMove(piece, x - 1, y + 1);
+        if(valid(x, y + 1, color) && !targeted(x, y + 1, color))
+            addMove(piece, x, y + 1);
+        if(valid(x + 1, y + 1, color) && !targeted(x + 1, y + 1, color))
+            addMove(piece, x + 1, y + 1);
+        // Middle
+        if(valid(x - 1, y, color) && !targeted(x - 1, y, color))
+            addMove(piece, x - 1, y);
+        if(valid(x + 1, y, color) && !targeted(x + 1, y, color))
+            addMove(piece, x + 1, y);
+        // Bottom
+        if(valid(x - 1, y - 1, color) && !targeted(x - 1, y - 1, color))
+            addMove(piece, x - 1, y - 1);
+        if(valid(x, y - 1, color) && !targeted(x, y - 1, color))
+            addMove(piece, x, y - 1);
+        if(valid(x + 1, y - 1, color) && !targeted(x + 1, y - 1, color))
+            addMove(piece, x + 1, y - 1);
+    }
         
         
     // Castling
