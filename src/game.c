@@ -18,6 +18,17 @@ void game() {
     while(true) {
         printBoard();
         generateMoves(turn);
+        if(checkCheckmate(turn)) {
+            println("Congratulations!");
+            char* capColorName = turn == WHITE ? "Black" : "White";
+            println("%s wins by checkmate!", capColorName);
+            return;
+        }
+        if(checkStalemate(turn)) {
+            println("Stalemate!");
+            println("Nobody wins...");
+            return;
+        }
         promptMove(turn);
         turn = turn == WHITE ? BLACK : WHITE;
         board.turnNumber++;

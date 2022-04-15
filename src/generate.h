@@ -9,6 +9,8 @@ Piece *palloc();
 void initPiece(Piece*, Color, Role, int, int);
 
 void generateMoves(Color);
+bool checkCheckmate(Color);
+bool checkStalemate(Color);
 
 void clear(Piece**, int);
 

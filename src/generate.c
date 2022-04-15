@@ -149,7 +149,30 @@ void generateMoves(Color color) {
 }
 
 
+bool checkCheckmate(Color color) {
+    Piece** pieces = board.pieces;
+    int pieceCount = board.pieceCount;
+    for(int i = 0; i < pieceCount; i++) {
+        Piece* piece = pieces[i];
+        if(piece -> color == color) {
+            if(piece -> movesetSize > 0) return false;
+        }
+    }
+    return numChecks > 0;
 }
+
+bool checkStalemate(Color color) {
+    Piece** pieces = board.pieces;
+    int pieceCount = board.pieceCount;
+    for(int i = 0; i < pieceCount; i++) {
+        Piece* piece = pieces[i];
+        if(piece -> color == color) {
+            if(piece -> movesetSize > 0) return false;
+        }
+    }
+    return numChecks == 0;
+}
+
 
 void clear(Piece** array, int size) {
     for(int i = 0; i < size; i++) {
