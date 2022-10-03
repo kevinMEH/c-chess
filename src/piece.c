@@ -17,17 +17,6 @@ void addMove(Piece *piece, int x, int y) {
     piece -> movesetSize = piece -> movesetSize + 1;
 }
 
-Position** guarded;
-int guardedSize;
-
-void addGuarded(int x, int y) {
-    Position* position = malloc(sizeof(Position));
-    position -> x = x;
-    position -> y = y;
-    guarded[guardedSize] = position;
-    guardedSize++;
-}
-
 void addCheck(Piece* piece, Position** interPos, int size) {
     Check* check = malloc(sizeof(Check));
     check -> attacker = piece;
@@ -116,11 +105,6 @@ bool targeted(int x, int y, Color color) {
     switch(color) {
         case BLACK: enemy = WHITE; break;
         case WHITE: enemy = BLACK; break;
-    }
-    
-    for(int i = 0; i < guardedSize; i++) {
-        Position* position = guarded[i];
-        if(position -> x == x && position -> y == y) return true;
     }
 
     for(int i = 0; i < board.pieceCount; i++) {
@@ -218,14 +202,6 @@ void clearAll(Piece** pieces, int piecesSize) {
         Piece* piece = pieces[i];
         clearMoves(piece);
     }
-}
-
-void clearGuarded() {
-    for(int i = 0; i < guardedSize; i++) {
-        Position* position = guarded[i];
-        free(position);
-    }
-    guardedSize = 0;
 }
 
 void checkModeAdd(Piece* piece, int x, int y, Mode mode) {
@@ -448,8 +424,7 @@ void validCheckModeAdd(Piece* piece, int x, int y, Mode mode) {
 
 void conAddValidityNoInter(Piece* piece, int x, int y, Color color) {
     Validity validity = conValid(x, y, color);
-    if(validity == GUARD) addGuarded(x, y);
-    if(validity == INVALID || validity == GUARD) return;
+    if(validity == INVALID) return;
     addMove(piece, x, y);
     if(validity == VCHECK) addCheckNoInter(piece);
 }

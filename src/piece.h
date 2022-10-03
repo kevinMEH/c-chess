@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-typedef enum Mode { CONSTRUCT, REGULAR, GUARD, CHECK } Mode;
+typedef enum Mode { CONSTRUCT, REGULAR, CHECK } Mode;
 typedef enum Rank { ALL, ROW, COLUMN, TL_DIAGONAL, TR_DIAGONAL } Rank;
 
 typedef struct Position {
@@ -52,7 +52,6 @@ typedef enum ConResult { BREAK, CHECKED, OTHER } ConResult;
 
 
 void addMove(Piece*, int, int);
-void addGuarded(int, int);
 void addCheck(Piece*, Position**, int);
 void addCheckNoInter(Piece*);
 void addPin(Piece*, Piece*, Rank);
@@ -73,7 +72,6 @@ bool posBlocksCheck(int, int);
 void generate(Piece*, Mode, Rank);
 void clearMoves(Piece*);
 void clearAll(Piece**, int);
-void clearGuarded();
 
 void checkModeAdd(Piece*, int, int, Mode);
 
